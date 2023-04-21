@@ -1,25 +1,32 @@
+# Imports required libraries
 import argparse
+import pickle
+
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 import xgboost as xgb
+from prettytable import PrettyTable
 import os
 from sklearn.model_selection import RandomizedSearchCV
-from src.models import preprocess_data, print_confusion_matrix
 
-# Argument parsing
+# Sets up argument parser for command-line options
 parser = argparse.ArgumentParser(description="Stress Detection Model Training")
+
+# Adds command-line arguments
 parser.add_argument(
     "--data_csv",
     type=str,
-    default="./data/processed/combined.csv",
+    default="../../data/processed/combined.csv",
     help="Path to the input data CSV file.",
 )
 parser.add_argument(
     "--models_dir",
     type=str,
-    default="./models",
+    default="../../models",
     help="Path to the directory where the trained models will be saved.",
 )
 parser.add_argument(
@@ -65,9 +72,10 @@ parser.add_argument(
     help="Random seed for reproducibility.",
 )
 
+# Parses command-line arguments and store their values
 args = parser.parse_args()
 
-# Replace the corresponding values in the script with the parsed arguments
+# Replaces the corresponding values in the script with the parsed arguments
 data_csv = args.data_csv
 models_dir = args.models_dir
 n_splits = args.n_splits
@@ -78,25 +86,50 @@ random_search_cv = args.random_search_cv
 random_search_verbose = args.random_search_verbose
 seed = args.seed
 
+# Defines stress level labels
 LABELS = {
     0: "Normal",
     1: "Stressed",
     2: "Very Stressed"
 }
 
-# Create models folder if it does not exist
+# Defines function for data preprocessing
+def preprocess_data(df):
+    scaler = StandardScaler()
+    X = scaler.fit_transform(df.drop("label", axis=1))
+    y = df.label.values.astype(int)
+
+    scaler_filename = os.path.join(models_dir, "scaler.pkl")
+    with open(scaler_filename, "wb") as scaler_file:
+        pickle.dump(scaler, scaler_file)
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.10, stratify=y, random_state=seed)
+
+    class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(y_train), y=y_train)
+
+    return X_train, X_val, y_train, y_val, class_weights
+
+# Defines function to print confusion matrix
+def print_confusion_matrix(confusion_matrix, labels):
+    table = PrettyTable()
+    table.field_names = [""] + labels
+    for i, row in enumerate(confusion_matrix):
+        table.add_row([labels[i]] + list(row))
+    print(table)
+
+# Creates models folder if it does not exist
 if not os.path.exists(models_dir):
     os.makedirs(models_dir)
 
-# Load and preprocess data
+# Loads and preprocess data
 df = pd.read_csv(data_csv).iloc[:, 1:]
-X, X_val, y, y_val, class_weights = preprocess_data(df, models_dir=models_dir, seed=seed)
+X, X_val, y, y_val, class_weights = preprocess_data(df)
 del df
 
-# Create Stratified K-Fold cross-validator
+# Creates Stratified K-Fold cross-validator
 skf = StratifiedKFold(n_splits=n_splits, random_state=seed, shuffle=True)
 
-# XGBoost base parameters
+# Defines base parameters for the XGBoost model
 params = {
     "objective": "multi:softmax",
     "num_class": 3,
@@ -104,7 +137,7 @@ params = {
     "seed": seed,
 }
 
-# Set the parameter grid for random search
+# Sets the parameter grid for random search
 param_grid = {
     "learning_rate": [0.01, 0.1, 0.2],
     "max_depth": [3, 4, 5, 6],
@@ -114,10 +147,10 @@ param_grid = {
     "gamma": [0, 0.1, 0.2, 0.3],
 }
 
-# Create the XGBoost classifier
+# Creates the XGBoost classifier
 xgb_clf = xgb.XGBClassifier(**params)
 
-# Perform random search for hyperparameter tuning
+# Performs random search for hyperparameter tuning
 random_search = RandomizedSearchCV(
     xgb_clf,
     param_grid,
@@ -131,15 +164,14 @@ random_search = RandomizedSearchCV(
 
 random_search.fit(X, y)
 
-# Get the best estimator and print the best parameters
+# Gets the best estimator and print the best parameters
 best_xgb_clf = random_search.best_estimator_
 print("Best Parameters: ", random_search.best_params_)
 
-# Update XGBoost parameters with the best parameters
+# Updates XGBoost parameters with the best parameters
 params.update(random_search.best_params_)
 
-# Train the XGBoost model
-# Train and evaluate the model on different splits
+# Trains the XGBoost model using k-fold cross-validation
 accuracy_scores = []
 f1_scores = []
 confusion_matrices = []
@@ -152,6 +184,7 @@ for i, (train_index, test_index) in enumerate(skf.split(X, y)):
     dtrain = xgb.DMatrix(X_train, label=y_train)
     dtest = xgb.DMatrix(X_test, label=y_test)
 
+    # Trains the XGBoost model
     bst = xgb.train(
         params,
         dtrain,
@@ -172,23 +205,28 @@ for i, (train_index, test_index) in enumerate(skf.split(X, y)):
     f1 = f1_score(y_test, y_pred, average="weighted")
     confusion = confusion_matrix(y_test, y_pred)
 
+    # Saves evaluation metrics
     accuracy_scores.append(accuracy)
     f1_scores.append(f1)
     confusion_matrices.append(confusion)
+
+    # Prints evaluation metrics
     print_confusion_matrix(confusion, labels=list(LABELS.values()))
     print(f"{i}. KFold Accuracy: {accuracy:.4f}")
     print(f"{i}. KFold F1 Score: {f1:.4f}")
 
+    # Saves the XGBoost model for each fold
     bst.save_model(f"{models_dir}/xgboost_kfold_{i}.model")
 
-# Calculate average accuracy and F1 score
+# Calculates average accuracy and F1 score
 avg_accuracy = np.mean(accuracy_scores)
 avg_f1 = np.mean(f1_scores)
 
+# Prints average accuracy and F1 score
 print(f"Average Accuracy: {avg_accuracy:.4f}")
 print(f"Average F1 Score: {avg_f1:.4f}")
 
-# Print average confusion matrix
+# Prints average confusion matrix
 avg_confusion_matrix = np.mean(confusion_matrices, axis=0).astype(int)
 print("Average Confusion Matrix:")
 print_confusion_matrix(avg_confusion_matrix, labels=list(LABELS.values()))
