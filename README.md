@@ -88,9 +88,15 @@ python predict.py --model_path [PATH_TO_MODEL] --scaler_path [PATH_TO_SCALER] --
 - `input_csv`: path to the input data CSV file.
 - `processed`: whether the input data is already processed or not.
 
+After cloning the repository and installing the required packages, predict.py can be run. Sample dataset is provided in ```./data/processed/``` folder. Following script can be run immediately.
+
+```bash
+python predict
+```
+
 ## Results
 
-After training the model on the provided dataset, the model achieved an average accuracy of 0.9779 and an average F1 score of 0.9776 on 5-fold cross-validation.
+After training the model on the provided dataset, the model achieved an average accuracy of %97.78, an average F1 score of %94.89, and a recall of %94.14 on 5-fold cross-validation.
 
 ## License
 

@@ -12,25 +12,25 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_path",
         type=str,
-        default="../../models",
+	default="./models/xgboost_kfold_0.model",
         help="Path to the directory where the trained models are stored.",
     )
     parser.add_argument(
         "--data_path",
         type=str,
-        default="../../data/processed/preprocessed_for_inference.csv",
+        default="./data/processed/preprocessed_for_inference.csv",
         help="Path to the preprocessed data CSV file.",
     )
     parser.add_argument(
         "--processed",
         type=bool,
-        default=False,
+        default=True,
         help="Whether the data has been preprocessed or not.",
     )
     parser.add_argument(
         "--scaler_path",
         type=str,
-        default="../../models/scaler.pkl",
+        default="./models/scaler.pkl",
         help="Path to the scaler file.",
     )
     args = parser.parse_args()
