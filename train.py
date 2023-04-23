@@ -20,13 +20,13 @@ parser = argparse.ArgumentParser(description="Stress Detection Model Training")
 parser.add_argument(
     "--data_csv",
     type=str,
-    default="../../data/processed/combined.csv",
+    default="./data/processed/combined.csv",
     help="Path to the input data CSV file.",
 )
 parser.add_argument(
     "--models_dir",
     type=str,
-    default="../../models",
+    default="./models",
     help="Path to the directory where the trained models will be saved.",
 )
 parser.add_argument(
