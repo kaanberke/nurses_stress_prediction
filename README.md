@@ -98,6 +98,11 @@ python predict
 
 After training the model on the provided dataset, the model achieved an average accuracy of %97.78, an average F1 score of %94.89, and a recall of %94.14 on 5-fold cross-validation.
 
+<p align="center">
+  <img src="./figures/figure_1.png" />
+</p>
+
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
