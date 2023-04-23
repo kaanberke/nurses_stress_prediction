@@ -96,7 +96,7 @@ python predict
 
 ## Results
 
-After training the model on the provided dataset, the model achieved an average accuracy of 0.9779 and an average F1 score of 0.9776 on 5-fold cross-validation.
+After training the model on the provided dataset, the model achieved an average accuracy of %97.78, an average F1 score of %94.89, and a recall of %94.14 on 5-fold cross-validation.
 
 ## License
 
