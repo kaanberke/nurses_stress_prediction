@@ -91,7 +91,7 @@ python predict.py --model_path [PATH_TO_MODEL] --scaler_path [PATH_TO_SCALER] --
 After cloning the repository and installing the required packages, predict.py can be run. Sample dataset is provided in ```./data/processed/``` folder. Following script can be run immediately.
 
 ```bash
-python predict
+python predict.py
 ```
 
 ## Results
